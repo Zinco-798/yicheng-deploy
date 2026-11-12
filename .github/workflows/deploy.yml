@@ -1,0 +1,40 @@
+name: deploy
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+      - name: Download artifacts
+        run: |
+          curl -fL -o backend.jar "https://github.com/Zinco-798/yicheng-deploy/releases/download/deploy-2026-11-12/backend.jar"
+          curl -fL -o frontend.tar.gz "https://github.com/Zinco-798/yicheng-deploy/releases/download/deploy-2026-11-12/frontend.tar.gz"
+          ls -lh backend.jar frontend.tar.gz
+      - name: Upload and deploy
+        run: |
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key backend.jar frontend.tar.gz root@47.117.79.251:/tmp/
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@47.117.79.251 'bash -s' <<'EOF'
+          set -e
+          TS=$(date +%Y%m%d-%H%M%S)
+          BACKUP=/var/backups/yicheng-connect/manual-$TS
+          mkdir -p "$BACKUP"
+          cp /opt/yicheng-connect/back/target/demo1-0.0.1-SNAPSHOT.jar "$BACKUP/backend.jar"
+          tar -czf "$BACKUP/frontend.tar.gz" -C /var/www/yicheng-connect . 2>/dev/null || true
+          cp /tmp/backend.jar /opt/yicheng-connect/back/target/demo1-0.0.1-SNAPSHOT.jar
+          rm -rf /var/www/yicheng-connect/*
+          tar -xzf /tmp/frontend.tar.gz -C /var/www/yicheng-connect
+          chown -R www-data:www-data /var/www/yicheng-connect 2>/dev/null || true
+          systemctl restart yicheng-connect
+          for i in $(seq 1 45); do
+            curl -sf http://127.0.0.1:8080/api/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -s http://127.0.0.1:8080/api/health; echo
+          curl -s -o /dev/null -w "nginx /: %{http_code}\n" http://127.0.0.1/
+          echo DEPLOY_OK
+          EOF
