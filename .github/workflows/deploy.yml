@@ -12,7 +12,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
       - name: Download artifacts
         run: |
-          curl -fL -o backend.jar "https://github.com/Zinco-798/yicheng-deploy/releases/download/deploy-2026-11-13/backend-assistant-v2.jar"
+          curl -fL -o backend.jar "https://github.com/Zinco-798/yicheng-deploy/releases/download/deploy-2026-11-13/backend-assistant-v3.jar"
           curl -fL -o frontend.tar.gz "https://github.com/Zinco-798/yicheng-deploy/releases/download/deploy-2026-11-13/frontend-fixed.tar.gz"
           ls -lh backend.jar frontend.tar.gz
       - name: Upload and deploy
